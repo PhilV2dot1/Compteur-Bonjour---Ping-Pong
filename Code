@@ -1,0 +1,297 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract CompteurInteractions {
+    
+    // Compteur global d'interactions
+    uint256 public interactionsTotal;
+    
+    // Compteur d'interactions par adresse
+    mapping(address => uint256) public interactionsParAdresse;
+    
+    // Compteur d'interactions par fonction
+    mapping(string => uint256) public interactionsParFonction;
+    
+    // Historique des interactions
+    struct Interaction {
+        address utilisateur;
+        string fonction;
+        uint256 timestamp;
+        uint256 numeroInteraction;
+    }
+    
+    Interaction[] public historiqueInteractions;
+    
+    // Mapping pour l'historique par utilisateur
+    mapping(address => uint256[]) public interactionsUtilisateur;
+    
+    // Statistiques
+    address public utilisateurLePlusActif;
+    uint256 public recordInteractions;
+    string public fonctionLaPlusUtilisee;
+    uint256 public recordFonction;
+    
+    // Liste des utilisateurs uniques
+    address[] public utilisateursUniques;
+    mapping(address => bool) public utilisateurExiste;
+    
+    // Événements
+    event NouvelleInteraction(address indexed utilisateur, string fonction, uint256 numeroInteraction);
+    event NouveauRecord(address indexed utilisateur, uint256 nombreInteractions);
+    event MilestoneAtteint(uint256 milestone, address indexed declencheur);
+    
+    // Enregistrer une interaction
+    function enregistrerInteraction(string memory _nomFonction) private {
+        // Incrémenter les compteurs
+        interactionsTotal++;
+        interactionsParAdresse[msg.sender]++;
+        interactionsParFonction[_nomFonction]++;
+        
+        // Ajouter l'utilisateur s'il est nouveau
+        if (!utilisateurExiste[msg.sender]) {
+            utilisateursUniques.push(msg.sender);
+            utilisateurExiste[msg.sender] = true;
+        }
+        
+        // Créer l'entrée dans l'historique
+        Interaction memory nouvelleInteraction = Interaction({
+            utilisateur: msg.sender,
+            fonction: _nomFonction,
+            timestamp: block.timestamp,
+            numeroInteraction: interactionsTotal
+        });
+        
+        historiqueInteractions.push(nouvelleInteraction);
+        interactionsUtilisateur[msg.sender].push(historiqueInteractions.length - 1);
+        
+        // Mettre à jour l'utilisateur le plus actif
+        if (interactionsParAdresse[msg.sender] > recordInteractions) {
+            utilisateurLePlusActif = msg.sender;
+            recordInteractions = interactionsParAdresse[msg.sender];
+            emit NouveauRecord(msg.sender, recordInteractions);
+        }
+        
+        // Mettre à jour la fonction la plus utilisée
+        if (interactionsParFonction[_nomFonction] > recordFonction) {
+            fonctionLaPlusUtilisee = _nomFonction;
+            recordFonction = interactionsParFonction[_nomFonction];
+        }
+        
+        // Vérifier les milestones
+        if (interactionsTotal % 100 == 0) {
+            emit MilestoneAtteint(interactionsTotal, msg.sender);
+        }
+        
+        emit NouvelleInteraction(msg.sender, _nomFonction, interactionsTotal);
+    }
+    
+    // Fonction exemple 1 : Dire bonjour
+    function direBonjour() public returns (string memory) {
+        enregistrerInteraction("direBonjour");
+        return "Bonjour !";
+    }
+    
+    // Fonction exemple 2 : Incrémenter
+    function incrementer() public returns (uint256) {
+        enregistrerInteraction("incrementer");
+        return interactionsParAdresse[msg.sender];
+    }
+    
+    // Fonction exemple 3 : Ping
+    function ping() public returns (string memory) {
+        enregistrerInteraction("ping");
+        return "Pong !";
+    }
+    
+    // Fonction exemple 4 : Laisser un message
+    function laisserMessage(string memory _message) public returns (bool) {
+        enregistrerInteraction("laisserMessage");
+        // Le message pourrait être stocké si nécessaire
+        return bytes(_message).length > 0;
+    }
+    
+    // Obtenir le nombre total d'interactions
+    function obtenirInteractionsTotal() public view returns (uint256) {
+        return interactionsTotal;
+    }
+    
+    // Obtenir le nombre d'interactions d'un utilisateur
+    function obtenirInteractionsUtilisateur(address _utilisateur) public view returns (uint256) {
+        return interactionsParAdresse[_utilisateur];
+    }
+    
+    // Obtenir mes interactions
+    function obtenirMesInteractions() public view returns (uint256) {
+        return interactionsParAdresse[msg.sender];
+    }
+    
+    // Obtenir le nombre d'interactions d'une fonction
+    function obtenirInteractionsFonction(string memory _fonction) public view returns (uint256) {
+        return interactionsParFonction[_fonction];
+    }
+    
+    // Obtenir l'historique complet d'un utilisateur
+    function obtenirHistoriqueUtilisateur(address _utilisateur) public view returns (
+        uint256[] memory indices,
+        string[] memory fonctions,
+        uint256[] memory timestamps
+    ) {
+        uint256[] memory indexInteractions = interactionsUtilisateur[_utilisateur];
+        uint256 nombre = indexInteractions.length;
+        
+        indices = new uint256[](nombre);
+        fonctions = new string[](nombre);
+        timestamps = new uint256[](nombre);
+        
+        for (uint256 i = 0; i < nombre; i++) {
+            Interaction memory inter = historiqueInteractions[indexInteractions[i]];
+            indices[i] = inter.numeroInteraction;
+            fonctions[i] = inter.fonction;
+            timestamps[i] = inter.timestamp;
+        }
+        
+        return (indices, fonctions, timestamps);
+    }
+    
+    // Obtenir les dernières interactions (max 10)
+    function obtenirDernieresInteractions(uint256 _nombre) public view returns (
+        address[] memory utilisateurs,
+        string[] memory fonctions,
+        uint256[] memory timestamps
+    ) {
+        require(_nombre > 0 && _nombre <= 10, "Demander entre 1 et 10 interactions");
+        
+        uint256 debut = historiqueInteractions.length > _nombre ? 
+            historiqueInteractions.length - _nombre : 0;
+        uint256 taille = historiqueInteractions.length - debut;
+        
+        utilisateurs = new address[](taille);
+        fonctions = new string[](taille);
+        timestamps = new uint256[](taille);
+        
+        for (uint256 i = 0; i < taille; i++) {
+            Interaction memory inter = historiqueInteractions[debut + i];
+            utilisateurs[i] = inter.utilisateur;
+            fonctions[i] = inter.fonction;
+            timestamps[i] = inter.timestamp;
+        }
+        
+        return (utilisateurs, fonctions, timestamps);
+    }
+    
+    // Obtenir les statistiques globales
+    function obtenirStatistiques() public view returns (
+        uint256 totalInteractions,
+        uint256 nombreUtilisateursUniques,
+        address utilisateurPlusActif,
+        uint256 recordUtilisateur,
+        string memory fonctionPlusUtilisee,
+        uint256 recordFonctionValue
+    ) {
+        return (
+            interactionsTotal,
+            utilisateursUniques.length,
+            utilisateurLePlusActif,
+            recordInteractions,
+            fonctionLaPlusUtilisee,
+            recordFonction
+        );
+    }
+    
+    // Obtenir le classement des utilisateurs les plus actifs (top 10)
+    function obtenirTopUtilisateurs(uint256 _nombre) public view returns (
+        address[] memory adresses,
+        uint256[] memory interactions
+    ) {
+        require(_nombre > 0 && _nombre <= 10, "Demander entre 1 et 10 utilisateurs");
+        
+        uint256 taille = utilisateursUniques.length < _nombre ? 
+            utilisateursUniques.length : _nombre;
+        
+        adresses = new address[](taille);
+        interactions = new uint256[](taille);
+        
+        // Créer une copie pour le tri
+        address[] memory tempAdresses = new address[](utilisateursUniques.length);
+        uint256[] memory tempInteractions = new uint256[](utilisateursUniques.length);
+        
+        for (uint256 i = 0; i < utilisateursUniques.length; i++) {
+            tempAdresses[i] = utilisateursUniques[i];
+            tempInteractions[i] = interactionsParAdresse[utilisateursUniques[i]];
+        }
+        
+        // Tri par sélection (simple pour de petites listes)
+        for (uint256 i = 0; i < taille; i++) {
+            uint256 maxIndex = i;
+            for (uint256 j = i + 1; j < tempAdresses.length; j++) {
+                if (tempInteractions[j] > tempInteractions[maxIndex]) {
+                    maxIndex = j;
+                }
+            }
+            
+            // Échanger
+            if (maxIndex != i) {
+                (tempAdresses[i], tempAdresses[maxIndex]) = (tempAdresses[maxIndex], tempAdresses[i]);
+                (tempInteractions[i], tempInteractions[maxIndex]) = (tempInteractions[maxIndex], tempInteractions[i]);
+            }
+            
+            adresses[i] = tempAdresses[i];
+            interactions[i] = tempInteractions[i];
+        }
+        
+        return (adresses, interactions);
+    }
+    
+    // Obtenir le rang d'un utilisateur
+    function obtenirRang(address _utilisateur) public view returns (uint256) {
+        uint256 interactionsUser = interactionsParAdresse[_utilisateur];
+        uint256 rang = 1;
+        
+        for (uint256 i = 0; i < utilisateursUniques.length; i++) {
+            if (interactionsParAdresse[utilisateursUniques[i]] > interactionsUser) {
+                rang++;
+            }
+        }
+        
+        return rang;
+    }
+    
+    // Réinitialiser les compteurs (fonction d'urgence)
+    function reinitialiser() public {
+        require(msg.sender == utilisateurLePlusActif || interactionsTotal == 0, 
+                "Seul l'utilisateur le plus actif peut reinitialiser");
+        
+        interactionsTotal = 0;
+        delete historiqueInteractions;
+        
+        // Note: Les mappings ne peuvent pas être complètement supprimés
+        // mais peuvent être réinitialisés manuellement si nécessaire
+    }
+    
+    // Obtenir l'activité par période (dernières 24h, 7 jours, 30 jours)
+    function obtenirActiviteRecente() public view returns (
+        uint256 dernieres24h,
+        uint256 derniers7jours,
+        uint256 derniers30jours
+    ) {
+        uint256 maintenant = block.timestamp;
+        
+        for (uint256 i = 0; i < historiqueInteractions.length; i++) {
+            Interaction memory inter = historiqueInteractions[i];
+            uint256 age = maintenant - inter.timestamp;
+            
+            if (age <= 24 hours) {
+                dernieres24h++;
+                derniers7jours++;
+                derniers30jours++;
+            } else if (age <= 7 days) {
+                derniers7jours++;
+                derniers30jours++;
+            } else if (age <= 30 days) {
+                derniers30jours++;
+            }
+        }
+        
+        return (dernieres24h, derniers7jours, derniers30jours);
+    }
+}
