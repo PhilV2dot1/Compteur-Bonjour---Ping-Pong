@@ -3,6 +3,7 @@
 Système de comptage :
 Compteurs automatiques :
 
+
 Compteur global : Toutes les interactions avec le contrat
 Par utilisateur : Nombre d'interactions de chaque adresse
 Par fonction : Quelle fonction est la plus utilisée
