@@ -1,5 +1,7 @@
 # Compteur-Bonjour---Ping-Pong
 
+Contrat Base : 0x1c01dDbbF42F29d62d48A16f282B2cc7256d1D36
+
 Système de comptage :
 Compteurs automatiques :
 
