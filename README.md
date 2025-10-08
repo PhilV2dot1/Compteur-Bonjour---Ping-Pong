@@ -1,5 +1,6 @@
 # Compteur-Bonjour---Ping-Pong
 
+Contrat Celo : 0x39f27432088306FB4c70cD178ad9bc218B4507e3
 Contrat Base : 0x1c01dDbbF42F29d62d48A16f282B2cc7256d1D36
 
 Système de comptage :
